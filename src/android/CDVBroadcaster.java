@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.webkit.ValueCallback;
 
@@ -61,19 +60,23 @@ public class CDVBroadcaster extends CordovaPlugin {
     }
 
     protected void registerReceiver(android.content.BroadcastReceiver receiver, android.content.IntentFilter filter) {
-        LocalBroadcastManager.getInstance(super.webView.getContext()).registerReceiver(receiver,filter);
+        System.out.println("CDVBroadcaster: registerReceiver");
+        super.webView.getContext().registerReceiver(receiver, filter);
     }
 
     protected void unregisterReceiver(android.content.BroadcastReceiver receiver) {
-        LocalBroadcastManager.getInstance(super.webView.getContext()).unregisterReceiver(receiver);
+        System.out.println("CDVBroadcaster: unregisterReceiver");
+        super.webView.getContext().unregisterReceiver(receiver);
     }
 
-    protected boolean sendBroadcast(android.content.Intent intent) {
-        return LocalBroadcastManager.getInstance(super.webView.getContext()).sendBroadcast(intent);
+    protected void sendBroadcast(android.content.Intent intent) {
+        System.out.println("CDVBroadcaster: sendBroadcast");
+        super.webView.getContext().sendBroadcast(intent);
     }
 
     @Override
     public Object onMessage(String id, Object data) {
+        System.out.println("CDVBroadcaster: onMessage: id = " + id);
 
         if( receiverMap.containsKey(id) ) {
             try {
@@ -86,6 +89,7 @@ public class CDVBroadcaster extends CordovaPlugin {
     }
 
     private void fireNativeEvent( final String eventName, JSONObject userData ) {
+        System.out.println("CDVBroadcaster: fireNativeEvent: eventName = " + eventName);
         if( eventName == null ) {
             throw new IllegalArgumentException("eventName parameter is null!");
         }
@@ -111,6 +115,7 @@ public class CDVBroadcaster extends CordovaPlugin {
      */
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+        System.out.println("CDVBroadcaster: execute: action = " + action);
         if( action.equals("fireNativeEvent")) {
 
             final String eventName = args.getString(0);
@@ -196,6 +201,7 @@ public class CDVBroadcaster extends CordovaPlugin {
      */
     @Override
     public void onDestroy() {
+        System.out.println("CDVBroadcaster: onDestroy");
         // deregister receiver
         for( BroadcastReceiver r : receiverMap.values() ) {
                     unregisterReceiver(r);

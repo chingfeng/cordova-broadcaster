@@ -5,6 +5,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -16,6 +21,9 @@ import org.apache.cordova.CallbackContext;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.Iterator;
+import java.util.Set;
 
 /**
  * This class echoes a string called from JavaScript.
@@ -97,9 +105,22 @@ public class CDVBroadcaster extends CordovaPlugin {
         final Intent intent = new Intent(eventName);
 
         if( userData != null ) {
-            Bundle b = new Bundle();
-            b.putString(USERDATA, userData.toString());
-            intent.putExtras(b);
+            Bundle bundle = new Bundle();
+            String key;
+            String value;
+            JSONObject jsonObject;
+            JSONArray jsonArray;
+            Iterator iterator = userData.keys();
+            while(iterator.hasNext()){
+                key = (String)iterator.next();
+                value = userData.optString(key);
+                jsonArray = userData.optJSONArray(key);
+                jsonObject = userData.optJSONObject(key);
+                if (jsonArray != null) value = jsonArray.toString();
+                else if (jsonObject != null) value = jsonObject.toString();
+                if (value != null) bundle.putString(key, value);
+            }
+            intent.putExtras(bundle);
         }
 
         sendBroadcast( intent );
@@ -149,24 +170,41 @@ public class CDVBroadcaster extends CordovaPlugin {
 
                     @Override
                     public void onReceive(Context context, final Intent intent) {
-
                         final Bundle b = intent.getExtras();
+                        JSONObject payloadJsonObj = new JSONObject();
+                        String key, val;
+                        JSONObject jsonObject;
+                        JSONArray jsonArray;
 
-                        // parse the JSON passed as a string.
-                        try {
-
-                            String userData = "{}";
-                            if (b != null) {//  in some broadcast there might be no extra info
-                                userData = b.getString(USERDATA, "{}");
-                            } else {
-                                Log.v(TAG, "No extra information in intent bundle");
+                        if (b != null) {
+                            Set<String> keys = b.keySet();
+                            Iterator<String> iterator = keys.iterator();
+                            while (iterator.hasNext()) {
+                                key = iterator.next();
+                                val = b.getString(key);
+                                jsonObject = isValidJsonObj(val);
+                                jsonArray = isValidJsonArr(val);
+                                try {
+                                    if (jsonObject != null) {
+                                        payloadJsonObj.put(key, jsonObject);
+                                    } else if (jsonArray != null) {
+                                        payloadJsonObj.put(key, jsonArray);
+                                    } else {
+                                        payloadJsonObj.put(key, b.get(key));
+                                    }
+                                } catch (JSONException e) {
+                                    Log.v(TAG, "CDVBroadcaster: sendIntent: Error occur while convert extra to json. key = " + intent.getAction());
+                                }
                             }
-                            fireEvent(eventName, userData);
+                        } else {
+                            Log.v(TAG, "No extra information in intent bundle");
+                        }
 
+                        try {
+                            fireEvent(eventName, payloadJsonObj.toString());
                         } catch (JSONException e) {
                             Log.e(TAG, "'userdata' is not a valid json object!");
                         }
-
                     }
                 };
 
@@ -213,4 +251,19 @@ public class CDVBroadcaster extends CordovaPlugin {
 
     }
 
+    public JSONObject isValidJsonObj(String str) {
+        try {
+            return new JSONObject(str);
+        } catch (JSONException ex) {
+            return null;
+        }
+    }
+
+    public JSONArray isValidJsonArr(String str) {
+        try {
+            return new JSONArray(str);
+        } catch (JSONException ex) {
+            return null;
+        }
+    }
 }

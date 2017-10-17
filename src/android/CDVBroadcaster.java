@@ -1,6 +1,7 @@
 package org.bsc.cordova;
 
 import android.annotation.TargetApi;
+import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -170,18 +171,38 @@ public class CDVBroadcaster extends CordovaPlugin {
 
                     @Override
                     public void onReceive(Context context, final Intent intent) {
+                        final String action = intent.getAction();
                         final Bundle b = intent.getExtras();
                         JSONObject payloadJsonObj = new JSONObject();
                         String key, val;
                         JSONObject jsonObject;
                         JSONArray jsonArray;
 
+                        if (action.equals("android.bluetooth.adapter.action.STATE_CHANGED")) {
+                            return;
+                        }
+
+                        if (action.equals("android.bluetooth.adapter.action.CONNECTION_STATE_CHANGED")) {
+                            int CONNECTION_STATE = b.getInt("android.bluetooth.adapter.extra.CONNECTION_STATE");
+                            int PREVIOUS_CONNECTION_STATE = b.getInt("android.bluetooth.adapter.extra.PREVIOUS_CONNECTION_STATE");
+                            BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                            Log.v(TAG, "CDVBroadcaster: CONNECTION_STATE_CHANGED: " + PREVIOUS_CONNECTION_STATE + " => " + CONNECTION_STATE);
+                            Log.v(TAG, "CDVBroadcaster: DEVICE: " + device.getName() + ": addr = " + device.getAddress() + ", id = " + device.getUuids());
+                            // BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                            // System.out.println("CDVBroadcaster: onReceive: device.getName() = " + device.getName() + ", device.getAddress() = " + device.getAddress());
+                            // if (val instanceof BluetoothDevice) {
+                            //     return mAddress.equals(((BluetoothDevice) o).getAddress());
+                            // }
+                            return;
+                        }
+
                         if (b != null) {
                             Set<String> keys = b.keySet();
                             Iterator<String> iterator = keys.iterator();
                             while (iterator.hasNext()) {
                                 key = iterator.next();
-                                val = b.getString(key);
+                                val = b.getString(key + "");
+                                if (val == null) continue;
                                 jsonObject = isValidJsonObj(val);
                                 jsonArray = isValidJsonArr(val);
                                 try {
